@@ -107,7 +107,7 @@ def register():
     bpy.utils.register_class(preferences.DisplayEventTextAliasProperties)
     utils.bl_class_registry.BlClassRegistry.register()
     register_shortcut_key()
-    bpy.app.handlers.load_pre.append(load_pre_handler)
+    #bpy.app.handlers.load_pre.append(load_pre_handler)
 
     # Apply preferences of the panel location.
     context = bpy.context
@@ -126,7 +126,7 @@ def register():
 
 
 def unregister():
-    bpy.app.handlers.load_pre.remove(load_pre_handler)
+    #bpy.app.handlers.load_pre.remove(load_pre_handler)
     unregister_shortcut_key()
     # TODO: Unregister by BlClassRegistry
     utils.bl_class_registry.BlClassRegistry.unregister()

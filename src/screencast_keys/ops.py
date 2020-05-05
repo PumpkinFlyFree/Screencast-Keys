@@ -366,6 +366,8 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
     # TODO: We can check it with the valid of event handler.
     running = False
 
+    current_window_addr = None
+
     @classmethod
     def is_running(cls):
         return cls.running
@@ -758,6 +760,26 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
 
     @staticmethod
     @bpy.app.handlers.persistent
+    def auto_restart(scene):
+        context = bpy.context
+        window = context.window
+        addr = window.as_pointer()
+        prefs = compat.get_user_preferences(context).addons[__package__].preferences
+
+        if not SK_OT_ScreencastKeys.is_running():
+            return
+
+        if SK_OT_ScreencastKeys.current_window_addr == addr:
+            return
+        
+        #if prefs.do_auto_restart:
+        #    return
+        
+        print("Auto restarted")
+        bpy.ops.wm.sk_screencast_keys('INVOKE_REGION_WIN')
+
+    @staticmethod
+    @bpy.app.handlers.persistent
     def sort_modalhandlers(scene):
         """Sort modalhandlers registered on wmWindow.
            This makes SK_OT_ScreencastKeys.model method enable to get events
@@ -974,6 +996,7 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
     @classmethod
     def event_timer_add(cls, context):
         wm = context.window_manager
+        cls.current_window_addr = context.window
 
         # Add timer to all windows.
         for window in wm.windows:
@@ -998,6 +1021,7 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
         prefs = compat.get_user_preferences(context).addons[__package__].preferences
 
         if cls.is_running():
+            bpy.app.handlers.depsgraph_update_pre.remove(cls.auto_restart)
             if compat.check_version(2, 80, 0) >= 0:
                 if cls.sort_modalhandlers in bpy.app.handlers.depsgraph_update_pre:
                     bpy.app.handlers.depsgraph_update_pre.remove(cls.sort_modalhandlers)
@@ -1022,6 +1046,7 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
             self.origin["space"] = context.space_data.as_pointer()
             self.origin["region_type"] = context.region.type
             context.area.tag_redraw()
+            bpy.app.handlers.depsgraph_update_pre.append(cls.auto_restart)
             if prefs.get_event_aggressively:
                 if compat.check_version(2, 80, 0) >= 0:
                     bpy.app.handlers.depsgraph_update_pre.append(cls.sort_modalhandlers)

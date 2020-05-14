@@ -52,6 +52,7 @@ class SK_PT_ScreencastKeys(bpy.types.Panel):
         if prefs.background:
             column.prop(prefs, "color_background", text="")
         column.prop(prefs, "font_size")
+        column.prop(prefs, "mouse_size")
 
         column.separator()
 

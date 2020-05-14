@@ -182,6 +182,12 @@ class SK_Preferences(bpy.types.AddonPreferences):
         min=6,
         max=48
     )
+    mouse_size = bpy.props.IntProperty(
+        name="Mouse Size",
+        default=compat.get_user_preferences(bpy.context).ui_styles[0].widget.points*3,
+        min=18,
+        max=144,
+    )
     origin = bpy.props.EnumProperty(
         name="Origin",
         items=[
@@ -280,6 +286,7 @@ class SK_Preferences(bpy.types.AddonPreferences):
             if self.background:
                 col.prop(self, "color_background", text="")
             col.prop(self, "font_size")
+            col.prop(self, "mouse_size")
 
             col = split.column()
             col.prop(self, "origin")

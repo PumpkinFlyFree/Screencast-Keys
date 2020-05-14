@@ -54,7 +54,60 @@ EventType = enum.IntEnum(
 EventType.names = {e.identifier: e.name for e in event_type_enum_items}
 
 
-def draw_rounded_box(x, y, w, h, round_radius, fill=False, fill_color=None):
+def draw_mouse(x, y, w, h, left_pressed, right_pressed, middle_pressed, color,
+               round_radius):
+
+    mouse_body = [x, y, w, h/2]
+    left_mouse_button = [x, y + h/2, w/3, h/2]
+    middle_mouse_button = [x + w/3, y + h/2, w/3, h/2]
+    right_mouse_button = [x + 2*w/3, y + h/2, w/3, h/2]
+
+    draw_rounded_box(mouse_body[0], mouse_body[1],
+                     mouse_body[2], mouse_body[3],
+                     round_radius,
+                     fill=False, fill_color=color,
+                     round_corner=[True, True, False, False])
+
+    draw_rounded_box(left_mouse_button[0], left_mouse_button[1],
+                     left_mouse_button[2], left_mouse_button[3],
+                     round_radius / 2,
+                     fill=False, fill_color=color,
+                     round_corner=[False, False, False, True])
+    if left_pressed:
+        draw_rounded_box(left_mouse_button[0], left_mouse_button[1],
+                        left_mouse_button[2], left_mouse_button[3],
+                        round_radius / 2,
+                        fill=True, fill_color=color,
+                        round_corner=[False, False, False, True])
+
+    draw_rounded_box(middle_mouse_button[0], middle_mouse_button[1],
+                     middle_mouse_button[2], middle_mouse_button[3],
+                     round_radius / 2,
+                     fill=False, fill_color=color,
+                     round_corner=[False, False, False, False])
+    if middle_pressed:
+        draw_rounded_box(middle_mouse_button[0], middle_mouse_button[1],
+                        middle_mouse_button[2], middle_mouse_button[3],
+                        round_radius / 2,
+                        fill=True, fill_color=color,
+                        round_corner=[False, False, False, False])
+
+    draw_rounded_box(right_mouse_button[0], right_mouse_button[1],
+                     right_mouse_button[2], right_mouse_button[3],
+                     round_radius / 2,
+                     fill=False, fill_color=color,
+                     round_corner=[False, False, True, False])
+    if right_pressed:
+        draw_rounded_box(right_mouse_button[0], right_mouse_button[1],
+                        right_mouse_button[2], right_mouse_button[3],
+                        round_radius / 2,
+                        fill=True, fill_color=color,
+                        round_corner=[False, False, True, False])
+
+
+def draw_rounded_box(x, y, w, h, round_radius, fill=False, fill_color=None,
+                     round_corner=[True, True, True, True]):
+    """round_corner: [Right Bottom, Left Bottom, Right Top, Left Top]"""
 
     def circle_verts_num(r):
         """Get number of verticies for circle optimized for drawing."""
@@ -72,17 +125,19 @@ def draw_rounded_box(x, y, w, h, round_radius, fill=False, fill_color=None):
     n = int(num_verts / 4) + 1
     dangle = math.pi * 2 / num_verts
 
+    radius = [round_radius if rc else 0 for rc in round_corner]
+
     x_origin = [
-        x + round_radius,
-        x + w - round_radius,
-        x + w - round_radius,
-        x + round_radius,
+        x + radius[0],
+        x + w - radius[1],
+        x + w - radius[2],
+        x + radius[3],
     ]
     y_origin = [
-        y + round_radius,
-        y + round_radius,
-        y + h - round_radius,
-        y + h - round_radius,
+        y + radius[0],
+        y + radius[1],
+        y + h - radius[2],
+        y + h - radius[3],
     ]
     angle_start = [
         math.pi * 1.0,
@@ -96,10 +151,10 @@ def draw_rounded_box(x, y, w, h, round_radius, fill=False, fill_color=None):
         bgl.glBegin(bgl.GL_TRIANGLE_FAN)
     else:
         bgl.glBegin(bgl.GL_LINE_LOOP)
-    for x0, y0, angle in zip(x_origin, y_origin, angle_start):
+    for x0, y0, angle, r in zip(x_origin, y_origin, angle_start, radius):
         for _ in range(n):
-            x = x0 + round_radius * math.cos(angle)
-            y = y0 + round_radius * math.sin(angle)
+            x = x0 + r * math.cos(angle)
+            y = y0 + r * math.sin(angle)
             bgl.glVertex2f(x, y)
             angle += dangle
     bgl.glEnd()
@@ -292,6 +347,12 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
 
     # Hold modifier keys.
     hold_modifier_keys = []
+    # Hold mouse buttons.
+    hold_mouse_buttons = {
+        'LEFTMOUSE': False,
+        'RIGHTMOUSE': False,
+        'MIDDLEMOUSE': False,
+    }
     # Event history.
     # Format: [time, event_type, modifiers, repeat_count]
     event_history = []
@@ -862,6 +923,14 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
 
             region_drawn = True
 
+        # Draw mouse
+        draw_mouse(x, y, prefs.mouse_size, prefs.mouse_size * 1.3,
+                   cls.hold_mouse_buttons['LEFTMOUSE'],
+                   cls.hold_mouse_buttons['RIGHTMOUSE'],
+                   cls.hold_mouse_buttons['MIDDLEMOUSE'],
+                   prefs.color,
+                   prefs.mouse_size * 0.5)
+
         bgl.glDisable(bgl.GL_BLEND)
         bgl.glScissor(*scissor_box)
         bgl.glLineWidth(1.0)
@@ -951,6 +1020,23 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
         if EventType[event.type] == EventType.WINDOW_DEACTIVATE:
             self.hold_modifier_keys.clear()
 
+    def update_hold_mouse_buttons(self, event):
+        """Update hold mouse buttons."""
+
+        if (event.type != 'MOUSEMOVE') and (event.type not in self.hold_mouse_buttons.keys()):
+            return
+
+        if event.type == 'MOUSEMOVE':
+            if event.value == 'RELEASE':
+                for k in self.hold_mouse_buttons.keys():
+                    self.hold_mouse_buttons[k] = False
+                return
+
+        if event.value == 'PRESS':
+            self.hold_mouse_buttons[event.type] = True
+        elif event.value == 'RELEASE':
+            self.hold_mouse_buttons[event.type] = False
+
     def is_ignore_event(self, event, prefs=None):
         """Return True if event will not be shown."""
 
@@ -1006,6 +1092,9 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
         if event_type in current_mod_keys:
             # Remove modifier key which is just pressed.
             current_mod_keys.remove(event_type)
+
+        # Update hold mouse buttons.
+        self.update_hold_mouse_buttons(event)
 
         # Update event history.
         if (not self.is_ignore_event(event, prefs=prefs) and

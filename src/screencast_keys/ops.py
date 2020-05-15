@@ -681,22 +681,36 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
                 draw_area_width = max(draw_area_width, sw)
             draw_area_height += sh + sh * cls.HEIGHT_RATIO_FOR_SEPARATOR
 
+        mouse_width = prefs.mouse_size
+        mouse_height = prefs.mouse_size * 1.3
+        margin = sh * 0.2
+        tw = 0
+        if True:
+            tw += mouse_width
+
+        if cls.hold_modifier_keys and True:
+            tw += mouse_width * 0.4
+
         if cls.hold_modifier_keys:
             mod_names = cls.sorted_modifier_keys(cls.hold_modifier_keys)
             text = " + ".join(mod_names)
 
-            sw = blf.dimensions(font_id, text)[0]
-            draw_area_width = max(draw_area_width, sw)
+            tw += blf.dimensions(font_id, text)[0] + margin * 2
+        draw_area_width = max(draw_area_width, tw)
 
-        draw_area_height += sh
+        if mouse_height > sh:
+            draw_area_height += mouse_height + margin * 2
+        else:
+            draw_area_height += sh + margin * 2
 
         event_history = cls.removed_old_event_history()
 
-        if cls.hold_modifier_keys or event_history:
-            sw = blf.dimensions(font_id, "Left Mouse")[0]
-            draw_area_width = max(draw_area_width, sw)
-            draw_area_height += sh * cls.HEIGHT_RATIO_FOR_SEPARATOR
+        # if cls.hold_modifier_keys or event_history:
+        #     sw = blf.dimensions(font_id, "Left Mouse")[0]
+        #     draw_area_width = max(draw_area_width, sw)
+        #     draw_area_height += sh * cls.HEIGHT_RATIO_FOR_SEPARATOR
 
+        # Event history.
         for _, event_type, modifiers, repeat_count in event_history[::-1]:
             text = event_type.names[event_type.name]
             if modifiers:
@@ -707,7 +721,7 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
 
             sw = blf.dimensions(font_id, text)[0]
             draw_area_width = max(draw_area_width, sw)
-            draw_area_height += sh
+        draw_area_height += prefs.max_event_history * sh
 
         draw_area_height += sh
 
@@ -874,30 +888,64 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
         drawing = False     # TODO: Need to check if drawing is now on progress.
         compat.set_blf_font_color(font_id, *prefs.color, 1.0)
         margin = sh * 0.2
+
+        # Calculate width including mouse size
+        tw = 0
+        text = ""
         if cls.hold_modifier_keys or drawing:
             mod_keys = cls.sorted_modifier_keys(cls.hold_modifier_keys)
             if drawing:
                 text = ""
             else:
                 text = " + ".join(mod_keys)
+            tw = blf.dimensions(font_id, text)[0] + margin * 2
 
-            offset_x = cls.get_text_offset_for_alignment(font_id, text, context)
+        # if cls.mouse_event == 'FIGURE':
+        ofx = 0
+        ofy = 0
+        mouse_width = prefs.mouse_size
+        mouse_height = prefs.mouse_size * 1.3
+        if True:
+            ofx = mouse_width * 1.4
+            ofy = (mouse_height - sh) / 2
+            tw += mouse_width
+        
+        if cls.hold_modifier_keys and True:
+            tw += mouse_width * 0.4
+
+        offset_x = cls.get_offset_for_alignment(tw, context)
+
+        # Draw mouse
+        # if cls.mouse_event == 'FIGURE':
+        if True:
+            draw_mouse(x + offset_x, y, mouse_width, mouse_height,
+                    cls.hold_mouse_buttons['LEFTMOUSE'],
+                    cls.hold_mouse_buttons['RIGHTMOUSE'],
+                    cls.hold_mouse_buttons['MIDDLEMOUSE'],
+                    prefs.color,
+                    prefs.mouse_size * 0.5)
+
+        if cls.hold_modifier_keys or drawing:
+            #offset_x = cls.get_text_offset_for_alignment(font_id, text, context)
 
             # Draw rounded box.
             box_height = sh + margin * 2
             box_width = blf.dimensions(font_id, text)[0] + margin * 2
-            draw_rounded_box(x - margin + offset_x, y - margin,
+            draw_rounded_box(x + offset_x + ofx, y - margin + ofy,
                              box_width, box_height, box_height * 0.2,
                              prefs.background, prefs.color_background)
 
             # Draw key text.
-            blf.position(font_id, x + offset_x, y + margin, 0)
+            blf.position(font_id, x + margin + offset_x + ofx, y + margin + ofy, 0)
             draw_text(text, font_id, prefs.color, prefs.shadow, prefs.color_shadow)
             bgl.glColor4f(*prefs.color, 1.0)
 
             region_drawn = True
 
-        y += sh + margin * 2
+        if mouse_height > sh:
+            y += mouse_height + margin * 2
+        else:
+            y += sh + margin * 2
 
         # Draw event history.
         event_history = cls.removed_old_event_history()
@@ -922,14 +970,6 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
             y += sh
 
             region_drawn = True
-
-        # Draw mouse
-        draw_mouse(x, y, prefs.mouse_size, prefs.mouse_size * 1.3,
-                   cls.hold_mouse_buttons['LEFTMOUSE'],
-                   cls.hold_mouse_buttons['RIGHTMOUSE'],
-                   cls.hold_mouse_buttons['MIDDLEMOUSE'],
-                   prefs.color,
-                   prefs.mouse_size * 0.5)
 
         bgl.glDisable(bgl.GL_BLEND)
         bgl.glScissor(*scissor_box)

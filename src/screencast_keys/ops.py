@@ -338,6 +338,20 @@ def get_display_event_text(event_id):
     return "UNKNOWN"
 
 
+def show_mouse_hold_status(prefs):
+    if not prefs.show_mouse_events:
+        return False
+
+    return prefs.mouse_events_show_mode in ['HOLD_STATUS', 'EVENT_HISTORY_AND_HOLD_STATUS']
+
+
+def show_mouse_event_history(prefs):
+    if not prefs.show_mouse_events:
+        return False
+
+    return prefs.mouse_events_show_mode in ['EVENT_HISTORY', 'EVENT_HISTORY_AND_HOLD_STATUS']
+
+
 @BlClassRegistry()
 class SK_OT_ScreencastKeys(bpy.types.Operator):
     bl_idname = "wm.sk_screencast_keys"
@@ -642,7 +656,7 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
                 Event history[-2]
                 Event history[-1]
 
-                Hold modifier key list
+                Mouse hold status  Hold modifier key list
                 ----------------
                 Operator history
 
@@ -681,17 +695,18 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
                 draw_area_width = max(draw_area_width, sw)
             draw_area_height += sh + sh * cls.HEIGHT_RATIO_FOR_SEPARATOR
 
-        mouse_width = prefs.mouse_size
-        mouse_height = prefs.mouse_size * 1.3
-        margin = sh * 0.2
-        tw = 0
-        if True:
-            tw += mouse_width
+        if show_mouse_hold_status(prefs):
+            mouse_width = prefs.mouse_size
+            mouse_height = prefs.mouse_size * 1.3
+        else:
+            mouse_width = 0.0
+            mouse_height = 0.0
 
-        if cls.hold_modifier_keys and True:
+        margin = sh * 0.2
+        tw = mouse_width
+        if cls.hold_modifier_keys:
             tw += mouse_width * 0.4
 
-        if cls.hold_modifier_keys:
             mod_names = cls.sorted_modifier_keys(cls.hold_modifier_keys)
             text = " + ".join(mod_names)
 
@@ -703,14 +718,8 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
         else:
             draw_area_height += sh + margin * 2
 
-        event_history = cls.removed_old_event_history()
-
-        # if cls.hold_modifier_keys or event_history:
-        #     sw = blf.dimensions(font_id, "Left Mouse")[0]
-        #     draw_area_width = max(draw_area_width, sw)
-        #     draw_area_height += sh * cls.HEIGHT_RATIO_FOR_SEPARATOR
-
         # Event history.
+        event_history = cls.removed_old_event_history()
         for _, event_type, modifiers, repeat_count in event_history[::-1]:
             text = event_type.names[event_type.name]
             if modifiers:
@@ -722,8 +731,6 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
             sw = blf.dimensions(font_id, text)[0]
             draw_area_width = max(draw_area_width, sw)
         draw_area_height += prefs.max_event_history * sh
-
-        draw_area_height += sh
 
         # Add margin.
         draw_area_height += 30
@@ -900,24 +907,25 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
                 text = " + ".join(mod_keys)
             tw = blf.dimensions(font_id, text)[0] + margin * 2
 
-        # if cls.mouse_event == 'FIGURE':
         ofx = 0
         ofy = 0
-        mouse_width = prefs.mouse_size
-        mouse_height = prefs.mouse_size * 1.3
-        if True:
+        if show_mouse_hold_status(prefs):
+            mouse_width = prefs.mouse_size
+            mouse_height = prefs.mouse_size * 1.3
             ofx = mouse_width * 1.4
             ofy = (mouse_height - sh) / 2
             tw += mouse_width
-        
-        if cls.hold_modifier_keys and True:
+        else:
+            mouse_width = 0.0
+            mouse_height = 0.0
+
+        if cls.hold_modifier_keys:
             tw += mouse_width * 0.4
 
         offset_x = cls.get_offset_for_alignment(tw, context)
 
         # Draw mouse
-        # if cls.mouse_event == 'FIGURE':
-        if True:
+        if show_mouse_hold_status(prefs):
             draw_mouse(x + offset_x, y, mouse_width, mouse_height,
                     cls.hold_mouse_buttons['LEFTMOUSE'],
                     cls.hold_mouse_buttons['RIGHTMOUSE'],
@@ -1086,7 +1094,7 @@ class SK_OT_ScreencastKeys(bpy.types.Operator):
                           EventType.WINDOW_DEACTIVATE, EventType.TEXTINPUT}:
             return True
         elif (prefs is not None
-              and not prefs.show_mouse_events
+              and not show_mouse_event_history(prefs)
               and event_type in self.MOUSE_EVENT_TYPES):
             return True
         elif event_type.name.startswith("EVT_TWEAK"):

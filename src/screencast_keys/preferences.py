@@ -231,6 +231,15 @@ class SK_Preferences(bpy.types.AddonPreferences):
         name="Show Mouse Events",
         default=True,
     )
+    mouse_events_show_mode = bpy.props.EnumProperty(
+        name="Mouse Events",
+        items=[
+            ('EVENT_HISTORY', "Event History", ""),
+            ('HOLD_STATUS', "Hold Status", ""),
+            ('EVENT_HISTORY_AND_HOLD_STATUS', "Event History + Hold Status", ""),
+        ],
+        default='HOLD_STATUS'
+    )
     show_last_operator = bpy.props.BoolProperty(
         name="Show Last Operator",
         default=False,
@@ -297,6 +306,8 @@ class SK_Preferences(bpy.types.AddonPreferences):
             col = split.column()
             col.prop(self, "max_event_history")
             col.prop(self, "show_mouse_events")
+            if self.show_mouse_events:
+                col.prop(self, "mouse_events_show_mode")
             col.prop(self, "show_last_operator")
 
             # Panel location is only available in >= 2.80

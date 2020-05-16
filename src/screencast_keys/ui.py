@@ -57,16 +57,18 @@ class SK_PT_ScreencastKeys(bpy.types.Panel):
         column.separator()
 
         column.prop(prefs, "origin")
+        column.operator("wm.sk_set_origin", text="Set Origin")
         column.prop(prefs, "align")
         row = column.row()
         row.prop(prefs, "offset")
-        column.operator("wm.sk_set_origin", text="Set Origin")
         column.prop(prefs, "display_time")
 
         column.separator()
 
         column.prop(prefs, "max_event_history")
         column.prop(prefs, "show_mouse_events")
+        if prefs.show_mouse_events:
+            column.prop(prefs, "mouse_events_show_mode")
         column.prop(prefs, "show_last_operator")
 
         column.separator()
